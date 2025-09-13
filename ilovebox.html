@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Quote Generator</title>
+  <meta name="description" content="Press a button to get a random quote." />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-2: #141a32;
+      --fg: #e8ebf2;
+      --muted: #b7bfd6;
+      --accent: #7aa2ff;
+      --accent-2: #5de0e6;
+      --ring: #99aaff55;
+      --shadow: 0 20px 50px rgba(0,0,0,.35);
+      --radius: 20px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f3f5fb;
+        --bg-2: #ffffff;
+        --fg: #0e1325;
+        --muted: #3e4660;
+        --accent: #305aff;
+        --accent-2: #00bcd4;
+        --ring: #305aff33;
+        --shadow: 0 20px 40px rgba(25,35,80,.12);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--fg);
+      background: radial-gradient(1200px 800px at 20% 10%, #1b2145 0%, var(--bg) 50%, var(--bg) 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(720px, 95vw);
+      background: linear-gradient(180deg, var(--bg-2), color-mix(in hsl, var(--bg-2) 90%, black 10%));
+      border: 1px solid color-mix(in hsl, var(--bg-2) 80%, white 20%);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .card::after {
+      content: "";
+      position: absolute; inset: -40% -20% auto auto; width: 70%; height: 70%;
+      background: radial-gradient(400px 300px at 70% 30%, color-mix(in hsl, var(--accent) 40%, transparent), transparent 60%),
+                  radial-gradient(260px 200px at 40% 60%, color-mix(in hsl, var(--accent-2) 35%, transparent), transparent 60%);
+      filter: blur(24px);
+      opacity: .6;
+      z-index: -1;
+      pointer-events: none;
+    }
+    h1 { margin: 0 0 8px; font-size: clamp(22px, 2.6vw, 28px); letter-spacing: .3px; }
+    .sub { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+
+    blockquote {
+      margin: 0; padding: 0; border: 0;
+      font-size: clamp(22px, 3vw, 30px);
+      line-height: 1.4; font-weight: 600;
+      filter: drop-shadow(0 2px 0 rgba(0,0,0,.06));
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    blockquote.show { opacity: 1; transform: translateY(0); }
+    .author { margin-top: 14px; color: var(--muted); font-weight: 500; }
+
+    .row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+    button, .ghost {
+      appearance: none; border: 0; cursor: pointer;
+      border-radius: 999px; padding: 12px 18px; font-weight: 600; font-size: 15px;
+      background: linear-gradient(180deg, color-mix(in hsl, var(--accent) 85%, white 15%), var(--accent));
+      color: white; box-shadow: 0 10px 24px color-mix(in hsl, var(--accent) 55%, transparent);
+      transition: transform .06s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:active { transform: translateY(1px) scale(.99); }
+    button:focus-visible { outline: none; box-shadow: 0 0 0 6px var(--ring); }
+
+    .ghost {
+      background: transparent; color: var(--fg); border: 1px solid color-mix(in hsl, var(--fg) 25%, transparent);
+      box-shadow: none; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .ghost:hover { background: color-mix(in hsl, var(--fg) 8%, transparent); }
+    .ghost:focus-visible { outline: none; box-shadow: 0 0 0 6px var(--ring); }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    footer { margin-top: 18px; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main class="card" role="region" aria-labelledby="title">
+    <h1 id="title">Box Quotes</h1>
+    <p class="sub">Press the button or hit <kbd>Space</kbd> to get a new quote.</p>
+
+    <blockquote id="quote" aria-live="polite">
+      <span id="quote-text">“Don't think inside the box.”</span>
+      <div class="author" id="quote-author">— Unknown</div>
+    </blockquote>
+
+    <div class="row" role="group" aria-label="Actions">
+      <button id="newBtn" type="button" aria-label="Generate a new random quote">New quote</button>
+      <button id="copyBtn" type="button" class="ghost" aria-label="Copy quote to clipboard">Copy</button>
+    </div>
+
+    <footer>Tip: Hold <strong>Shift</strong> and press <strong>Space</strong> to avoid repeating the last quote.</footer>
+  </main>
+
+  <script>
+const quotes = [
+  { t: "Don't think inside the box.", a: "Unknown" },
+  { t: "Think outside the box.", a: "Unknown" },
+  { t: "When you think you are thinking outside the box, you still are thinking inside your skull, which some could consider as a box.", a: "Unknown" },
+  { t: "If you really want to think outside the box, put your head in the box. When nobody thinks to do it, that is true outside the box thinking.", a: "Unknown" },
+  { t: "If life hands you a box, well... life doesn't have hands.", a: "Unknown" },
+  { t: "Boxes are just squares that got tall.", a: "Unknown" },
+  { t: "Every box is a box.", a: "Unknown" },
+  { t: "A small box is a room for an ant, but not your aunt. Unless you are an ant.", a: "Unknown" },
+  { t: "Why are we thinking anywhere in the first place? Just go with the flow.", a: "Unknown" },
+  { t: "What if the universe is a box?", a: "Unknown" },
+  { t: "Red Box, Blue Box, One Box, Two Box.", a: "Inspired by Dr. Suess" },
+  { t: "Why pay for a plane ticket, when you can mail yourself in a box?", a: "Unknown" }
+];
+
+    const q = document.getElementById('quote');
+    const qText = document.getElementById('quote-text');
+    const qAuthor = document.getElementById('quote-author');
+    const newBtn = document.getElementById('newBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const tweetBtn = document.getElementById('tweetBtn');
+
+    function randomIndex(exclude = -1) {
+      // Use crypto for better randomness when available
+      const n = quotes.length;
+      if (n <= 1) return 0;
+      let idx;
+      // Avoid immediate repeat if possible
+      do {
+        const buf = new Uint32Array(1);
+        (window.crypto || window.msCrypto).getRandomValues(buf);
+        idx = buf[0] % n;
+      } while (idx === exclude && n > 1);
+      return idx;
+    }
+
+    function setQuote(i) {
+      const { t, a } = quotes[i];
+      q.classList.remove('show');
+      // Force layout to restart animation
+      void q.offsetWidth;
+      qText.textContent = `“${t}”`;
+      qAuthor.textContent = `— ${a}`;
+      q.classList.add('show');
+      localStorage.setItem('lastQuoteIndex', String(i));
+      updateShareLink(t, a);
+    }
+
+    function updateShareLink(text, author) {
+      const msg = `${text} — ${author}`;
+      const url = new URL('https://twitter.com/intent/tweet');
+      url.searchParams.set('text', msg);
+      tweetBtn.href = url.toString();
+      tweetBtn.textContent = 'Share';
+    }
+
+    function newQuote(avoidRepeat = false) {
+      const last = Number(localStorage.getItem('lastQuoteIndex') ?? -1);
+      const idx = avoidRepeat ? randomIndex(last) : randomIndex();
+      setQuote(idx);
+    }
+
+    newBtn.addEventListener('click', () => newQuote(true));
+    copyBtn.addEventListener('click', async () => {
+      const text = `${qText.textContent} ${qAuthor.textContent}`.trim();
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
+      } catch {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        copyBtn.textContent = 'Copied';
+        setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
+      }
+    });
+
+    // Keyboard: Space = new quote, Shift+Space forces different from last
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        newQuote(e.shiftKey);
+      }
+    });
+
+    // On load, try to avoid repeating the last seen quote
+    const last = Number(localStorage.getItem('lastQuoteIndex') ?? -1);
+    const startIdx = randomIndex(last);
+    setQuote(startIdx);
+  </script>
+</body>
+</html>
